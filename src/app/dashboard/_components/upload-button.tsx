@@ -43,6 +43,7 @@ export function UploadButton() {
   const organization = useOrganization();
   const user = useUser();
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const createFile = useMutation(api.files.createFile);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,60 +55,120 @@ export function UploadButton() {
 
   const fileRef = form.register("file");
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!orgId) return;
-
-    const postUrl = await generateUploadUrl();
-
-    const fileType = values.file[0].type;
-
-    const result = await fetch(postUrl, {
-      method: "POST",
-      headers: { "Content-Type": fileType },
-      body: values.file[0],
-    });
-    const { storageId } = await result.json();
-
-    const types = {
-      "image/png": "image",
-      "application/pdf": "pdf",
-      "text/csv": "csv",
-    } as Record<string, Doc<"files">["type"]>;
-
-    try {
-      await createFile({
-        name: values.title,
-        fileId: storageId,
-        orgId,
-        type: types[fileType],
-      });
-
-      form.reset();
-
-      setIsFileDialogOpen(false);
-
-      toast({
-        variant: "success",
-        title: "File Uploaded",
-        description: "Now everyone can view your file",
-      });
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Something went wrong",
-        description: "Your file could not be uploaded, try again later",
-      });
-    }
-  }
+  const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
 
   let orgId: string | undefined = undefined;
   if (organization.isLoaded && user.isLoaded) {
     orgId = organization.organization?.id ?? user.user?.id;
   }
 
-  const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!orgId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Organization ID is missing. Please make sure you're logged in.",
+      });
+      return;
+    }
 
-  const createFile = useMutation(api.files.createFile);
+    try {
+      console.log("Starting upload process...");
+
+      // Step 1: Generate upload URL
+      const postUrl = await generateUploadUrl();
+      console.log("Generated upload URL:", postUrl);
+
+      const file = values.file[0];
+      const fileType = file.type;
+      console.log("File details:", {
+        name: file.name,
+        type: fileType,
+        size: file.size
+      });
+
+      // Step 2: Upload file to Convex storage
+      console.log("Uploading file to storage...");
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": fileType },
+        body: file,
+      });
+
+      if (!result.ok) {
+        const errorText = await result.text();
+        throw new Error(`Upload failed with status: ${result.status}. ${errorText}`);
+      }
+
+      const uploadResult = await result.json();
+      const { storageId } = uploadResult;
+      console.log("File uploaded successfully, storageId:", storageId);
+
+      // Step 3: Map file type with more comprehensive type mapping
+      const types = {
+        // Images
+        "image/png": "image",
+        "image/jpeg": "image", 
+        "image/jpg": "image",
+        "image/gif": "image",
+        "image/webp": "image",
+        "image/svg+xml": "image",
+        // PDF
+        "application/pdf": "pdf",
+        // CSV and Excel
+        "text/csv": "csv",
+        "application/vnd.ms-excel": "csv",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "csv",
+        "text/plain": "csv",
+      } as Record<string, Doc<"files">["type"]>;
+
+      const mappedType = types[fileType];
+      
+      if (!mappedType) {
+        toast({
+          variant: "destructive",
+          title: "Unsupported file type",
+          description: `File type "${fileType}" is not supported. Please upload PNG, JPG, PDF, or CSV files.`,
+        });
+        return;
+      }
+
+      console.log("Creating file record with:", {
+        name: values.title,
+        fileId: storageId,
+        orgId,
+        type: mappedType
+      });
+
+      // Step 4: Create file record in database
+      await createFile({
+        name: values.title,
+        fileId: storageId,
+        orgId,
+        type: mappedType,
+      });
+
+      console.log("File record created successfully");
+
+      // Reset form and close dialog
+      form.reset();
+      setIsFileDialogOpen(false);
+
+      toast({
+        variant: "success",
+        title: "File Uploaded Successfully",
+        description: "Now everyone can view your file",
+      });
+
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: err instanceof Error ? err.message : "Your file could not be uploaded, try again later",
+      });
+    }
+  }
 
   return (
     <Dialog
@@ -152,7 +213,11 @@ export function UploadButton() {
                   <FormItem>
                     <FormLabel>File</FormLabel>
                     <FormControl>
-                      <Input type="file" {...fileRef} />
+                      <Input 
+                        type="file" 
+                        {...fileRef}
+                        accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.csv,.txt,.xlsx,.xls"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
