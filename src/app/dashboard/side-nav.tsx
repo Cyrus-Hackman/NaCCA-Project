@@ -10,37 +10,40 @@ export function SideNav() {
   const pathname = usePathname();
 
   return (
-    <div className="w-40 flex flex-col gap-4">
+    <div className="w-44 flex flex-col gap-1">
       <Link href="/dashboard/files">
         <Button
-          variant={"link"}
-          className={clsx("flex gap-2", {
-            "text-blue-500": pathname.includes("/dashboard/files"),
+          variant={"ghost"}
+          className={clsx("flex gap-2 w-full justify-start px-3 rounded-lg", {
+            "bg-primary/10 text-primary font-semibold": pathname.includes("/dashboard/files"),
+            "text-muted-foreground hover:text-foreground": !pathname.includes("/dashboard/files"),
           })}
         >
-          <FileIcon /> All Files
+          <FileIcon className="w-4 h-4" /> All Files
         </Button>
       </Link>
 
       <Link href="/dashboard/favorites">
         <Button
-          variant={"link"}
-          className={clsx("flex gap-2", {
-            "text-blue-500": pathname.includes("/dashboard/favorites"),
+          variant={"ghost"}
+          className={clsx("flex gap-2 w-full justify-start px-3 rounded-lg", {
+            "bg-primary/10 text-primary font-semibold": pathname.includes("/dashboard/favorites"),
+            "text-muted-foreground hover:text-foreground": !pathname.includes("/dashboard/favorites"),
           })}
         >
-          <StarIcon /> Favorites
+          <StarIcon className="w-4 h-4" /> Favorites
         </Button>
       </Link>
 
       <Link href="/dashboard/trash">
         <Button
-          variant={"link"}
-          className={clsx("flex gap-2", {
-            "text-blue-500": pathname.includes("/dashboard/trash"),
+          variant={"ghost"}
+          className={clsx("flex gap-2 w-full justify-start px-3 rounded-lg", {
+            "bg-primary/10 text-primary font-semibold": pathname.includes("/dashboard/trash"),
+            "text-muted-foreground hover:text-foreground": !pathname.includes("/dashboard/trash"),
           })}
         >
-          <TrashIcon /> Trash
+          <TrashIcon className="w-4 h-4" /> Trash
         </Button>
       </Link>
     </div>

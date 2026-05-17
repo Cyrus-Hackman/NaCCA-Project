@@ -3,9 +3,9 @@ import { useOrganization, useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { UploadButton } from "./upload-button";
-import { FileCard } from "./file-card";
+import { FileCard, FileCardSkeleton } from "./file-card";
 import Image from "next/image";
-import { GridIcon, Loader2, RowsIcon } from "lucide-react";
+import { GridIcon, RowsIcon } from "lucide-react";
 import { SearchBar } from "./search-bar";
 import { useState } from "react";
 import { DataTable } from "./file-table";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Doc } from "../../../../convex/_generated/dataModel";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function Placeholder() {
   return (
@@ -125,26 +126,37 @@ export function FileBrowser({
           </div>
         </div>
 
-        {isLoading && (
-          <div className="flex flex-col gap-8 w-full items-center mt-24">
-            <Loader2 className="h-32 w-32 animate-spin text-gray-500" />
-            <div className="text-2xl">Loading your files...</div>
-          </div>
-        )}
-
         <TabsContent value="grid">
           <div className="grid grid-cols-3 gap-4">
-            {modifiedFiles?.map((file) => {
+            {isLoading && (
+              <>
+                <FileCardSkeleton />
+                <FileCardSkeleton />
+                <FileCardSkeleton />
+                <FileCardSkeleton />
+                <FileCardSkeleton />
+                <FileCardSkeleton />
+              </>
+            )}
+            {!isLoading && modifiedFiles?.map((file) => {
               return <FileCard key={file._id} file={file} />;
             })}
           </div>
         </TabsContent>
         <TabsContent value="table">
-          <DataTable columns={columns} data={modifiedFiles} />
+          {isLoading && (
+            <div className="flex flex-col gap-4 mt-8">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          )}
+          {!isLoading && <DataTable columns={columns} data={modifiedFiles} />}
         </TabsContent>
       </Tabs>
 
-      {files?.length === 0 && <Placeholder />}
+      {!isLoading && files?.length === 0 && <Placeholder />}
     </div>
   );
 }

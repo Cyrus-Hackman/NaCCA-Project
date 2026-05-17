@@ -27,19 +27,21 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Doc } from "../../../../convex/_generated/dataModel";
 
+import { useDropzone } from "react-dropzone";
+import { useCallback } from "react";
+
 const formSchema = z.object({
-  title: z.string().min(1).max(200),
+  title: z.string().max(200).optional(),
   file: z
-    .custom<FileList>((val) => val instanceof FileList, "Required")
+    .custom<FileList | File[]>((val) => val instanceof FileList || Array.isArray(val), "Required")
     .refine((files) => files.length > 0, `Required`),
 });
 
 export function UploadButton() {
-  const { toast } = useToast();
   const organization = useOrganization();
   const user = useUser();
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -62,109 +64,98 @@ export function UploadButton() {
     orgId = organization.organization?.id ?? user.user?.id;
   }
 
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    form.setValue("file", acceptedFiles);
+    form.clearErrors("file");
+    
+    // Auto-fill the title if it's currently empty and only 1 file is dropped
+    if (!form.getValues("title") && acceptedFiles.length === 1) {
+      form.setValue("title", acceptedFiles[0].name);
+    }
+  }, [form]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+      "application/pdf": [".pdf"],
+      "text/csv": [".csv"],
+    },
+  });
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!orgId) {
-      toast({
-        variant: "destructive",
-        title: "Error",
+      toast.error("Error", {
         description: "Organization ID is missing. Please make sure you're logged in.",
       });
       return;
     }
 
     try {
-      console.log("Starting upload process...");
-
-      // Step 1: Generate upload URL
-      const postUrl = await generateUploadUrl();
-      console.log("Generated upload URL:", postUrl);
-
-      const file = values.file[0];
-      const fileType = file.type;
-      console.log("File details:", {
-        name: file.name,
-        type: fileType,
-        size: file.size
-      });
-
-      // Step 2: Upload file to Convex storage
-      console.log("Uploading file to storage...");
-      const result = await fetch(postUrl, {
-        method: "POST",
-        headers: { "Content-Type": fileType },
-        body: file,
-      });
-
-      if (!result.ok) {
-        const errorText = await result.text();
-        throw new Error(`Upload failed with status: ${result.status}. ${errorText}`);
-      }
-
-      const uploadResult = await result.json();
-      const { storageId } = uploadResult;
-      console.log("File uploaded successfully, storageId:", storageId);
-
-      // Step 3: Map file type with more comprehensive type mapping
-      const types = {
-        // Images
-        "image/png": "image",
-        "image/jpeg": "image", 
-        "image/jpg": "image",
-        "image/gif": "image",
-        "image/webp": "image",
-        "image/svg+xml": "image",
-        // PDF
-        "application/pdf": "pdf",
-        // CSV and Excel
-        "text/csv": "csv",
-        "application/vnd.ms-excel": "csv",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "csv",
-        "text/plain": "csv",
-      } as Record<string, Doc<"files">["type"]>;
-
-      const mappedType = types[fileType];
+      const files = Array.from(values.file);
       
-      if (!mappedType) {
-        toast({
-          variant: "destructive",
-          title: "Unsupported file type",
-          description: `File type "${fileType}" is not supported. Please upload PNG, JPG, PDF, or CSV files.`,
-        });
-        return;
-      }
+      await Promise.all(
+        files.map(async (file) => {
+          const fileType = file.type;
+          
+          const types = {
+            "image/png": "image",
+            "image/jpeg": "image", 
+            "image/jpg": "image",
+            "image/gif": "image",
+            "image/webp": "image",
+            "image/svg+xml": "image",
+            "application/pdf": "pdf",
+            "text/csv": "csv",
+            "application/vnd.ms-excel": "csv",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "csv",
+            "text/plain": "csv",
+          } as Record<string, Doc<"files">["type"]>;
 
-      console.log("Creating file record with:", {
-        name: values.title,
-        fileId: storageId,
-        orgId,
-        type: mappedType
-      });
+          const mappedType = types[fileType];
+          
+          if (!mappedType) {
+            throw new Error(`File type "${fileType}" is not supported.`);
+          }
 
-      // Step 4: Create file record in database
-      await createFile({
-        name: values.title,
-        fileId: storageId,
-        orgId,
-        type: mappedType,
-      });
+          const postUrl = await generateUploadUrl();
 
-      console.log("File record created successfully");
+          const result = await fetch(postUrl, {
+            method: "POST",
+            headers: { "Content-Type": fileType },
+            body: file,
+          });
+
+          if (!result.ok) {
+            const errorText = await result.text();
+            throw new Error(`Upload failed with status: ${result.status}. ${errorText}`);
+          }
+
+          const uploadResult = await result.json();
+          const { storageId } = uploadResult;
+
+          const titleToUse = files.length === 1 && values.title ? values.title : file.name;
+
+          await createFile({
+            name: titleToUse,
+            fileId: storageId,
+            orgId: orgId!,
+            type: mappedType,
+          });
+        })
+      );
 
       // Reset form and close dialog
       form.reset();
       setIsFileDialogOpen(false);
 
-      toast({
-        variant: "success",
-        title: "File Uploaded Successfully",
-        description: "Now everyone can view your file",
+      toast.success("Files Uploaded Successfully", {
+        description: "Now everyone can view your files",
       });
 
     } catch (err) {
       console.error("Upload error:", err);
-      toast({
-        variant: "destructive",
-        title: "Upload Failed",
+      toast.error("Upload Failed", {
         description: err instanceof Error ? err.message : "Your file could not be uploaded, try again later",
       });
     }
@@ -192,32 +183,48 @@ export function UploadButton() {
         <div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {(!form.watch("file") || form.watch("file")!.length <= 1) && (
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
                 name="file"
                 render={() => (
                   <FormItem>
-                    <FormLabel>File</FormLabel>
+                    <FormLabel>File{(form.watch("file")?.length ?? 0) > 1 ? "s" : ""}</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="file" 
-                        {...fileRef}
-                        accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.csv,.txt,.xlsx,.xls"
-                      />
+                      <div
+                        {...getRootProps()}
+                        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                          isDragActive ? "border-primary bg-primary/10" : "border-gray-300 hover:border-primary"
+                        }`}
+                      >
+                        <input {...getInputProps()} />
+                        {form.watch("file") && form.watch("file")!.length > 0 ? (
+                          <div className="text-sm font-medium text-primary">
+                            {form.watch("file")!.length === 1 
+                              ? `Selected: ${form.watch("file")![0].name}`
+                              : `Selected: ${form.watch("file")!.length} files`}
+                          </div>
+                        ) : isDragActive ? (
+                          <p className="text-primary font-medium">Drop the files here ...</p>
+                        ) : (
+                          <p className="text-gray-500">Drag &apos;n&apos; drop files here, or click to select</p>
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

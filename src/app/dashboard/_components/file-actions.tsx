@@ -27,7 +27,7 @@ import {
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Protect } from "@clerk/nextjs";
 
 export function FileCardActions({
@@ -40,7 +40,6 @@ export function FileCardActions({
   const deleteFile = useMutation(api.files.deleteFile);
   const restoreFile = useMutation(api.files.restoreFile);
   const toggleFavorite = useMutation(api.files.toggleFavorite);
-  const { toast } = useToast();
   const me = useQuery(api.users.getMe);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -63,9 +62,7 @@ export function FileCardActions({
                 await deleteFile({
                   fileId: file._id,
                 });
-                toast({
-                  variant: "default",
-                  title: "File marked for deletion",
+                toast("File marked for deletion", {
                   description: "Your file will be deleted soon",
                 });
               }}
