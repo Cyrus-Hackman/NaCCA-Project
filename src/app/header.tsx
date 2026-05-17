@@ -25,7 +25,7 @@ export function Header() {
       <div className="items-center container mx-auto justify-between flex gap-2 px-4">
         <Link href="/" className="flex gap-2 items-center text-xl font-semibold text-foreground">
           <Image src="/logo.png" width="40" height="40" alt="file drive logo" className="rounded-xl" />
-          <span className="hidden sm:inline">NaCCA File Manager</span>
+          <span className="hidden sm:inline">NaCCA FileDrive</span>
         </Link>
 
         <SignedIn>
