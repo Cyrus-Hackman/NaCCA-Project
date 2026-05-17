@@ -16,9 +16,7 @@ export default function FilesPage() {
 
   return (
     <div className="p-6">
-      <FileBrowser
-        title="Your Files"
-        favoritesOnly      />
+      <FileBrowser title="Your Files" />
     </div>
   );
 }
