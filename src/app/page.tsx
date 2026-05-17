@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function LandingPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-background">
       <div className="relative isolate px-6 pt-14 lg:px-8">
         <div
           className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
@@ -27,10 +27,10 @@ export default function LandingPage() {
               className="inline-block mb-8 rounded-2xl"
             />
 
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               The easiest way to upload and share files with NaCCA
             </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <p className="mt-6 text-base sm:text-lg leading-8 text-muted-foreground">
               Make and account and start managing your files in less than a
               minute.
             </p>
@@ -43,7 +43,7 @@ export default function LandingPage() {
               </Link>
               <a
                 href="#"
-                className="text-sm font-semibold leading-6 text-gray-900"
+                className="text-sm font-semibold leading-6 text-foreground"
               >
                 Learn more <span aria-hidden="true">→</span>
               </a>

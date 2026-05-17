@@ -85,35 +85,35 @@ export function FileBrowser({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">{title}</h1>
-
-        <SearchBar query={query} setQuery={setQuery} />
-
-        <UploadButton />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <h1 className="text-3xl font-bold">{title}</h1>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <SearchBar query={query} setQuery={setQuery} />
+          <UploadButton />
+        </div>
       </div>
 
       <Tabs defaultValue="grid">
-        <div className="flex justify-between items-center">
-          <TabsList className="mb-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+          <TabsList>
             <TabsTrigger value="grid" className="flex gap-2 items-center">
-              <GridIcon />
+              <GridIcon className="w-4 h-4" />
               Grid
             </TabsTrigger>
             <TabsTrigger value="table" className="flex gap-2 items-center">
-              <RowsIcon /> Table
+              <RowsIcon className="w-4 h-4" /> Table
             </TabsTrigger>
           </TabsList>
 
           <div className="flex gap-2 items-center">
-            <Label htmlFor="type-select">Type Filter</Label>
+            <Label htmlFor="type-select" className="text-sm whitespace-nowrap">Type Filter</Label>
             <Select
               value={type}
               onValueChange={(newType) => {
                 setType(newType as any);
               }}
             >
-              <SelectTrigger id="type-select" className="w-[180px]">
+              <SelectTrigger id="type-select" className="w-[140px] sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -127,7 +127,7 @@ export function FileBrowser({
         </div>
 
         <TabsContent value="grid">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {isLoading && (
               <>
                 <FileCardSkeleton />
