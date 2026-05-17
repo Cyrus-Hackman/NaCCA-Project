@@ -16,7 +16,7 @@ export function Header() {
     <div className="sticky top-0 z-50 border-b py-4 backdrop-blur-md bg-background/60">
       <div className="items-center container mx-auto justify-between flex">
         <Link href="/" className="flex gap-2 items-center text-xl">
-          <Image src="/logo.png" width="50" height="50" alt="file drive logo" />
+          <Image src="/logo.png" width="50" height="50" alt="file drive logo" className="rounded-xl" />
           FileDrive
         </Link>
 
